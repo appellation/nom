@@ -156,7 +156,7 @@ Connection: keep-alive
     BenchmarkId::new("parse", data.len()),
      data,
       |b, data| {
-    b.iter(|| parse(data).unwrap());
+    b.iter(|| parse(black_box(data)).unwrap());
   });
 
   http_group.finish();

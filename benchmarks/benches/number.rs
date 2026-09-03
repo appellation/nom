@@ -13,7 +13,7 @@ fn number(c: &mut Criterion) {
 
   parser(&data[..]).expect("should parse correctly");
   c.bench_function("number", move |b| {
-    b.iter(|| parser(&data[..]).unwrap());
+    b.iter(|| parser(black_box(&data[..])).unwrap());
   });
 }
 

@@ -152,7 +152,7 @@ fn json_bench(c: &mut Criterion) {
 
   // println!("data:\n{:?}", json(data));
   c.bench_function("json streaming", |b| {
-    b.iter(|| json(data).unwrap());
+    b.iter(|| json(black_box(data)).unwrap());
   });
 }
 
@@ -162,7 +162,7 @@ fn recognize_float_bytes(c: &mut Criterion) {
     recognize_float::<_, (_, ErrorKind)>(&b"-1.234E-12;"[..])
   );
   c.bench_function("recognize float bytes streaming", |b| {
-    b.iter(|| recognize_float::<_, (_, ErrorKind)>(&b"-1.234E-12;"[..]));
+    b.iter(|| recognize_float::<_, (_, ErrorKind)>(black_box(&b"-1.234E-12;"[..])));
   });
 }
 
@@ -172,7 +172,7 @@ fn recognize_float_str(c: &mut Criterion) {
     recognize_float::<_, (_, ErrorKind)>("-1.234E-12;")
   );
   c.bench_function("recognize float str streaming", |b| {
-    b.iter(|| recognize_float::<_, (_, ErrorKind)>("-1.234E-12;"));
+    b.iter(|| recognize_float::<_, (_, ErrorKind)>(black_box("-1.234E-12;")));
   });
 }
 
@@ -182,7 +182,7 @@ fn float_bytes(c: &mut Criterion) {
     double::<_, (_, ErrorKind)>(&b"-1.234E-12;"[..])
   );
   c.bench_function("float bytes streaming", |b| {
-    b.iter(|| double::<_, (_, ErrorKind)>(&b"-1.234E-12"[..]));
+    b.iter(|| double::<_, (_, ErrorKind)>(black_box(&b"-1.234E-12"[..])));
   });
 }
 
@@ -192,7 +192,7 @@ fn float_str(c: &mut Criterion) {
     double::<_, (_, ErrorKind)>("-1.234E-12;")
   );
   c.bench_function("float str streaming", |b| {
-    b.iter(|| double::<_, (_, ErrorKind)>("-1.234E-12;"));
+    b.iter(|| double::<_, (_, ErrorKind)>(black_box("-1.234E-12;")));
   });
 }
 
@@ -214,7 +214,7 @@ fn std_float_bytes(c: &mut Criterion) {
     std_float(&b"-1.234E-12;"[..])
   );
   c.bench_function("std_float bytes streaming", |b| {
-    b.iter(|| std_float(&b"-1.234E-12;"[..]));
+    b.iter(|| std_float(black_box(&b"-1.234E-12;"[..])));
   });
 }
 

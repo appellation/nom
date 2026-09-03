@@ -266,7 +266,7 @@ fn json_bench(c: &mut Criterion) {
   c.bench_function("json", |b| {
     b.iter(|| {
       json::<Error<&str>>()
-        .process::<OutputM<Emit, Emit, Complete>>(data)
+        .process::<OutputM<Emit, Emit, Complete>>(black_box(data))
         .unwrap()
     });
   });
@@ -288,7 +288,7 @@ fn json_bench_error_check(c: &mut Criterion) {
   c.bench_function("json", |b| {
     b.iter(|| {
       json::<Error<&str>>()
-        .process::<OutputM<Emit, Check, Complete>>(data)
+        .process::<OutputM<Emit, Check, Complete>>(black_box(data))
         .unwrap()
     });
   });
@@ -305,7 +305,7 @@ fn canada_json(c: &mut Criterion) {
   c.bench_function("json canada", |b| {
     b.iter(|| {
       json::<Error<&str>>()
-        .process::<OutputM<Emit, Emit, Complete>>(CANADA)
+        .process::<OutputM<Emit, Emit, Complete>>(black_box(CANADA))
         .unwrap()
     });
   });
@@ -327,7 +327,7 @@ fn verbose_json(c: &mut Criterion) {
   c.bench_function("json verbose", |b| {
     b.iter(|| {
       json::<VerboseError<&str>>()
-        .process::<OutputM<Emit, Emit, Complete>>(data)
+        .process::<OutputM<Emit, Emit, Complete>>(black_box(data))
         .unwrap()
     });
   });
@@ -343,7 +343,7 @@ fn verbose_canada_json(c: &mut Criterion) {
   c.bench_function("json canada verbose", |b| {
     b.iter(|| {
       json::<VerboseError<&str>>()
-        .process::<OutputM<Emit, Emit, Complete>>(CANADA)
+        .process::<OutputM<Emit, Emit, Complete>>(black_box(CANADA))
         .unwrap()
     });
   });
@@ -358,7 +358,7 @@ fn recognize_float_bytes(c: &mut Criterion) {
   c.bench_function("recognize float bytes", |b| {
     b.iter(|| {
       recognize_float::<_, (_, ErrorKind)>()
-        .process::<OutputM<Emit, Emit, Complete>>(&b"-1.234E-12"[..])
+        .process::<OutputM<Emit, Emit, Complete>>(black_box(&b"-1.234E-12"[..]))
     });
   });
 }
@@ -370,7 +370,8 @@ fn recognize_float_str(c: &mut Criterion) {
   );
   c.bench_function("recognize float str", |b| {
     b.iter(|| {
-      recognize_float::<_, (_, ErrorKind)>().process::<OutputM<Emit, Emit, Complete>>("-1.234E-12")
+      recognize_float::<_, (_, ErrorKind)>()
+        .process::<OutputM<Emit, Emit, Complete>>(black_box("-1.234E-12"))
     });
   });
 }
@@ -382,7 +383,8 @@ fn float_bytes(c: &mut Criterion) {
   );
   c.bench_function("float bytes", |b| {
     b.iter(|| {
-      double::<_, (_, ErrorKind)>().process::<OutputM<Emit, Emit, Complete>>(&b"-1.234E-12"[..])
+      double::<_, (_, ErrorKind)>()
+        .process::<OutputM<Emit, Emit, Complete>>(black_box(&b"-1.234E-12"[..]))
     });
   });
 }
@@ -393,7 +395,10 @@ fn float_str(c: &mut Criterion) {
     double::<_, (_, ErrorKind)>().process::<OutputM<Emit, Emit, Complete>>("-1.234E-12")
   );
   c.bench_function("float str", |b| {
-    b.iter(|| double::<_, (_, ErrorKind)>().process::<OutputM<Emit, Emit, Complete>>("-1.234E-12"));
+    b.iter(|| {
+      double::<_, (_, ErrorKind)>()
+        .process::<OutputM<Emit, Emit, Complete>>(black_box("-1.234E-12"))
+    });
   });
 }
 
@@ -415,7 +420,7 @@ fn std_float_bytes(c: &mut Criterion) {
     std_float(&b"-1.234E-12"[..])
   );
   c.bench_function("std_float bytes", |b| {
-    b.iter(|| std_float(&b"-1.234E-12"[..]));
+    b.iter(|| std_float(black_box(&b"-1.234E-12"[..])));
   });
 }
 

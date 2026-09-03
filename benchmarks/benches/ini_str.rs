@@ -66,7 +66,7 @@ file=payroll.dat
   let mut group = c.benchmark_group("ini str");
   group.throughput(Throughput::Bytes(s.len() as u64));
   group.bench_function(BenchmarkId::new("parse", s.len()), |b| {
-    b.iter(|| categories(s).unwrap())
+    b.iter(|| categories(black_box(s)).unwrap())
   });
 }
 

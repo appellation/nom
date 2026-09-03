@@ -59,7 +59,7 @@ file=payroll.dat
   let mut group = c.benchmark_group("ini");
   group.throughput(Throughput::Bytes(str.len() as u64));
   group.bench_function(BenchmarkId::new("parse", str.len()), |b| {
-    b.iter(|| categories(str.as_bytes()).unwrap())
+    b.iter(|| categories(black_box(str.as_bytes())).unwrap())
   });
 }
 
@@ -76,7 +76,7 @@ file=payroll.dat
   let mut group = c.benchmark_group("ini keys and values");
   group.throughput(Throughput::Bytes(str.len() as u64));
   group.bench_function(BenchmarkId::new("parse", str.len()), |b| {
-    b.iter(|| acc(str.as_bytes()).unwrap())
+    b.iter(|| acc(black_box(str.as_bytes())).unwrap())
   });
 }
 
@@ -86,7 +86,7 @@ fn bench_ini_key_value(c: &mut Criterion) {
   let mut group = c.benchmark_group("ini key value");
   group.throughput(Throughput::Bytes(str.len() as u64));
   group.bench_function(BenchmarkId::new("parse", str.len()), |b| {
-    b.iter(|| key_value(str.as_bytes()).unwrap())
+    b.iter(|| key_value(black_box(str.as_bytes())).unwrap())
   });
 }
 
