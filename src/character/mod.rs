@@ -348,7 +348,8 @@ where
     &mut self,
     input: I,
   ) -> crate::PResult<OM, I, Self::Output, Self::Error> {
-    input.split_at_position_mode1::<OM, _, _>(|item| !item.is_dec_digit(), ErrorKind::Digit)
+    input
+      .split_at_position_mode1::<OM, _, _>(|item: I::Item| !item.is_dec_digit(), ErrorKind::Digit)
   }
 }
 
@@ -394,7 +395,7 @@ where
     &mut self,
     i: I,
   ) -> crate::PResult<OM, I, Self::Output, Self::Error> {
-    i.split_at_position_mode::<OM, _, _>(|item| {
+    i.split_at_position_mode::<OM, _, _>(|item: I::Item| {
       let c = item.as_char();
       !(c == ' ' || c == '\t' || c == '\r' || c == '\n')
     })

@@ -49,7 +49,7 @@ pub trait Input: Clone + Sized {
   /// Returns the byte position of the first element satisfying the predicate
   fn position<P>(&self, predicate: P) -> Option<usize>
   where
-    P: Fn(Self::Item) -> bool;
+    P: Pattern<Self>;
 
   /// Returns an iterator over the elements
   fn iter_elements(&self) -> Self::Iter;
@@ -65,7 +65,7 @@ pub trait Input: Clone + Sized {
   /// *streaming version*: If no element is found matching the condition, this will return `Incomplete`
   fn split_at_position<P, E: ParseError<Self>>(&self, predicate: P) -> IResult<Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
     match self.position(predicate) {
       Some(n) => Ok(self.take_split(n)),
@@ -85,7 +85,7 @@ pub trait Input: Clone + Sized {
     e: ErrorKind,
   ) -> IResult<Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
     match self.position(predicate) {
       Some(0) => Err(Err::Error(E::from_error_kind(self.clone(), e))),
@@ -103,7 +103,7 @@ pub trait Input: Clone + Sized {
     predicate: P,
   ) -> IResult<Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
     match self.split_at_position(predicate) {
       Err(Err::Incomplete(_)) => Ok(self.take_split(self.input_len())),
@@ -123,7 +123,7 @@ pub trait Input: Clone + Sized {
     e: ErrorKind,
   ) -> IResult<Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
     match self.split_at_position1(predicate, e) {
       Err(Err::Incomplete(_)) => {
@@ -143,7 +143,7 @@ pub trait Input: Clone + Sized {
     predicate: P,
   ) -> crate::PResult<OM, Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
     match self.position(predicate) {
       Some(n) => Ok((self.take_from(n), OM::Output::bind(|| self.take(n)))),
@@ -165,7 +165,7 @@ pub trait Input: Clone + Sized {
     e: ErrorKind,
   ) -> crate::PResult<OM, Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
     match self.position(predicate) {
       Some(0) => Err(Err::Error(OM::Error::bind(|| {
@@ -216,9 +216,9 @@ impl<'a> Input for &'a [u8] {
   #[inline]
   fn position<P>(&self, predicate: P) -> Option<usize>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
-    self.iter().position(|b| predicate(*b))
+    predicate.find_in(self)
   }
 
   #[inline]
@@ -243,9 +243,9 @@ impl<'a> Input for &'a [u8] {
   #[inline(always)]
   fn split_at_position<P, E: ParseError<Self>>(&self, predicate: P) -> IResult<Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
-    match self.iter().position(|c| predicate(*c)) {
+    match predicate.find_in(self) {
       Some(i) => Ok(self.take_split(i)),
       None => Err(Err::Incomplete(Needed::new(1))),
     }
@@ -258,9 +258,9 @@ impl<'a> Input for &'a [u8] {
     e: ErrorKind,
   ) -> IResult<Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
-    match self.iter().position(|c| predicate(*c)) {
+    match predicate.find_in(self) {
       Some(0) => Err(Err::Error(E::from_error_kind(self, e))),
       Some(i) => Ok(self.take_split(i)),
       None => Err(Err::Incomplete(Needed::new(1))),
@@ -272,9 +272,9 @@ impl<'a> Input for &'a [u8] {
     predicate: P,
   ) -> IResult<Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
-    match self.iter().position(|c| predicate(*c)) {
+    match predicate.find_in(self) {
       Some(i) => Ok(self.take_split(i)),
       None => Ok(self.take_split(self.len())),
     }
@@ -287,9 +287,9 @@ impl<'a> Input for &'a [u8] {
     e: ErrorKind,
   ) -> IResult<Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
-    match self.iter().position(|c| predicate(*c)) {
+    match predicate.find_in(self) {
       Some(0) => Err(Err::Error(E::from_error_kind(self, e))),
       Some(i) => Ok(self.take_split(i)),
       None => {
@@ -309,9 +309,9 @@ impl<'a> Input for &'a [u8] {
     predicate: P,
   ) -> crate::PResult<OM, Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
-    match self.iter().position(|c| predicate(*c)) {
+    match predicate.find_in(self) {
       Some(n) => Ok((self.take_from(n), OM::Output::bind(|| self.take(n)))),
       None => {
         if OM::Incomplete::is_streaming() {
@@ -334,9 +334,9 @@ impl<'a> Input for &'a [u8] {
     e: ErrorKind,
   ) -> crate::PResult<OM, Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
-    match self.iter().position(|c| predicate(*c)) {
+    match predicate.find_in(self) {
       Some(0) => Err(Err::Error(OM::Error::bind(|| E::from_error_kind(self, e)))),
       Some(n) => Ok((self.take_from(n), OM::Output::bind(|| self.take(n)))),
       None => {
@@ -383,9 +383,9 @@ impl<'a> Input for &'a str {
 
   fn position<P>(&self, predicate: P) -> Option<usize>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
-    self.find(predicate)
+    predicate.find_in(self)
   }
 
   #[inline]
@@ -416,9 +416,9 @@ impl<'a> Input for &'a str {
   #[inline(always)]
   fn split_at_position<P, E: ParseError<Self>>(&self, predicate: P) -> IResult<Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
-    match self.find(predicate) {
+    match predicate.find_in(self) {
       // The position i is returned from str::find() which means it is within the bounds of the string
       Some(i) => {
         let (str1, str2) = self.split_at(i);
@@ -435,9 +435,9 @@ impl<'a> Input for &'a str {
     e: ErrorKind,
   ) -> IResult<Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
-    match self.find(predicate) {
+    match predicate.find_in(self) {
       Some(0) => Err(Err::Error(E::from_error_kind(self, e))),
       // The position i is returned from str::find() which means it is within the bounds of the string
       Some(i) => {
@@ -454,9 +454,9 @@ impl<'a> Input for &'a str {
     predicate: P,
   ) -> IResult<Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
-    match self.find(predicate) {
+    match predicate.find_in(self) {
       // The position i is returned from str::find() which means it is within the bounds of the string
       Some(i) => {
         let (str1, str2) = self.split_at(i);
@@ -473,9 +473,9 @@ impl<'a> Input for &'a str {
     e: ErrorKind,
   ) -> IResult<Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
-    match self.find(predicate) {
+    match predicate.find_in(self) {
       Some(0) => Err(Err::Error(E::from_error_kind(self, e))),
       // The position i is returned from str::find() which means it is within the bounds of the string
       Some(i) => {
@@ -501,9 +501,9 @@ impl<'a> Input for &'a str {
     predicate: P,
   ) -> crate::PResult<OM, Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
-    match self.find(predicate) {
+    match predicate.find_in(self) {
       Some(n) => unsafe {
         // find() returns a byte index that is already in the slice at a char boundary
         Ok((
@@ -535,9 +535,9 @@ impl<'a> Input for &'a str {
     e: ErrorKind,
   ) -> crate::PResult<OM, Self, Self, E>
   where
-    P: Fn(Self::Item) -> bool,
+    P: Pattern<Self>,
   {
-    match self.find(predicate) {
+    match predicate.find_in(self) {
       Some(0) => Err(Err::Error(OM::Error::bind(|| E::from_error_kind(self, e)))),
       Some(n) => unsafe {
         // find() returns a byte index that is already in the slice at a char boundary
@@ -1625,6 +1625,152 @@ impl NomRange<usize> for usize {
   }
 }
 
+/// A set of elements that can be searched for in an input.
+pub trait Pattern<I>: Copy {
+  /// Returns the byte offset of the first element belonging to the set
+  fn find_in(&self, haystack: I) -> Option<usize>;
+
+  /// Returns the byte offset of the first element *not* belonging to the set
+  fn find_not_in(&self, haystack: I) -> Option<usize>;
+}
+
+impl<I: Input, F: Fn(I::Item) -> bool + Copy> Pattern<I> for F {
+  fn find_in(&self, haystack: I) -> Option<usize> {
+    for (i, item) in haystack.iter_indices() {
+      if self(item) {
+        return Some(i);
+      }
+    }
+    None
+  }
+
+  fn find_not_in(&self, haystack: I) -> Option<usize> {
+    for (i, item) in haystack.iter_indices() {
+      if !self(item) {
+        return Some(i);
+      }
+    }
+    None
+  }
+}
+
+/// Byte offset of the first byte of `haystack` present in `set`
+fn find_byte_in(set: &[u8], haystack: &[u8]) -> Option<usize> {
+  match *set {
+    [] => None,
+    [a] => memchr::memchr(a, haystack),
+    [a, b] => memchr::memchr2(a, b, haystack),
+    [a, b, c] => memchr::memchr3(a, b, c, haystack),
+    _ => haystack.iter().position(|b| set.contains(b)),
+  }
+}
+
+/// Byte offset of the first byte of `haystack` absent from `set`
+fn find_byte_not_in(set: &[u8], haystack: &[u8]) -> Option<usize> {
+  match *set {
+    [] => (!haystack.is_empty()).then_some(0),
+    _ => haystack.iter().position(|b| !set.contains(b)),
+  }
+}
+
+impl Pattern<&str> for &str {
+  fn find_in(&self, haystack: &str) -> Option<usize> {
+    // An all-ASCII set can be searched for bytewise: every byte it can match is
+    // an ASCII byte, which is always a whole character and a char boundary.
+    if self.is_ascii() {
+      find_byte_in(self.as_bytes(), haystack.as_bytes())
+    } else {
+      str::find(haystack, |c: char| self.contains(c))
+    }
+  }
+
+  fn find_not_in(&self, haystack: &str) -> Option<usize> {
+    // Likewise: every byte before the returned offset belongs to the set and is
+    // therefore ASCII, so the offset cannot land on a UTF-8 continuation byte.
+    if self.is_ascii() {
+      find_byte_not_in(self.as_bytes(), haystack.as_bytes())
+    } else {
+      str::find(haystack, |c: char| !self.contains(c))
+    }
+  }
+}
+
+impl Pattern<&str> for &[char] {
+  fn find_in(&self, haystack: &str) -> Option<usize> {
+    str::find(haystack, |c: char| self.contains(&c))
+  }
+
+  fn find_not_in(&self, haystack: &str) -> Option<usize> {
+    str::find(haystack, |c: char| !self.contains(&c))
+  }
+}
+
+impl<const N: usize> Pattern<&str> for [char; N] {
+  fn find_in(&self, haystack: &str) -> Option<usize> {
+    (&self[..]).find_in(haystack)
+  }
+
+  fn find_not_in(&self, haystack: &str) -> Option<usize> {
+    (&self[..]).find_not_in(haystack)
+  }
+}
+
+impl Pattern<&str> for &[u8] {
+  fn find_in(&self, haystack: &str) -> Option<usize> {
+    str::find(haystack, |c: char| self.contains(&(c as u8)))
+  }
+
+  fn find_not_in(&self, haystack: &str) -> Option<usize> {
+    str::find(haystack, |c: char| !self.contains(&(c as u8)))
+  }
+}
+
+impl Pattern<&[u8]> for &str {
+  fn find_in(&self, haystack: &[u8]) -> Option<usize> {
+    find_byte_in(self.as_bytes(), haystack)
+  }
+
+  fn find_not_in(&self, haystack: &[u8]) -> Option<usize> {
+    find_byte_not_in(self.as_bytes(), haystack)
+  }
+}
+
+impl Pattern<&[u8]> for &[u8] {
+  fn find_in(&self, haystack: &[u8]) -> Option<usize> {
+    find_byte_in(self, haystack)
+  }
+
+  fn find_not_in(&self, haystack: &[u8]) -> Option<usize> {
+    find_byte_not_in(self, haystack)
+  }
+}
+
+impl<const N: usize> Pattern<&[u8]> for [u8; N] {
+  fn find_in(&self, haystack: &[u8]) -> Option<usize> {
+    find_byte_in(self, haystack)
+  }
+
+  fn find_not_in(&self, haystack: &[u8]) -> Option<usize> {
+    find_byte_not_in(self, haystack)
+  }
+}
+
+/// Matches wherever the wrapped pattern does not, and the other way around
+#[derive(Clone, Copy)]
+pub struct Complement<P>(pub P);
+
+impl<I, P: Pattern<I>> Pattern<I> for Complement<P> {
+  #[inline(always)]
+  fn find_in(&self, haystack: I) -> Option<usize> {
+    self.0.find_not_in(haystack)
+  }
+
+  #[inline(always)]
+  fn find_not_in(&self, haystack: I) -> Option<usize> {
+    self.0.find_in(haystack)
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -1677,5 +1823,56 @@ mod tests {
     assert_eq!(a.slice_index(7), Ok(16));
 
     assert!(a.slice_index(8).is_err());
+  }
+
+  /// A `&str` set is a set of characters, not of bytes. Two different
+  /// characters can share a UTF-8 byte, so a bytewise search both matches
+  /// characters that are not in the set and reports offsets partway into a
+  /// character -- and splitting a `&str` at such an offset is unchecked.
+  #[test]
+  fn test_str_pattern_utf8() {
+    // `\u{2191}` and `\u{20ac}` share their lead byte, and nothing else.
+    assert_eq!("\u{2191}".as_bytes(), &[0xe2, 0x86, 0x91]);
+    assert_eq!("\u{20ac}".as_bytes(), &[0xe2, 0x82, 0xac]);
+
+    // A set of one character does not match the other one.
+    assert_eq!("\u{20ac}".find_in("\u{2191}"), None);
+    assert_eq!("\u{20ac}".find_not_in("\u{2191}"), Some(0));
+
+    // ... and skips over it to reach the character it does match.
+    assert_eq!("\u{20ac}".find_in("a\u{2191}\u{20ac}"), Some(4));
+    assert_eq!("a\u{2191}".find_not_in("a\u{2191}\u{20ac}"), Some(4));
+
+    // An ASCII set stops at the start of a multi-byte character, not inside it.
+    assert_eq!("a".find_not_in("a\u{2191}"), Some(1));
+    assert_eq!("".find_not_in("\u{2191}"), Some(0));
+
+    for haystack in [
+      "",
+      "a",
+      "\u{2191}",
+      "a\u{2191}\u{20ac}",
+      "\u{20ac}\u{2191}a",
+    ] {
+      for offset in [
+        "",
+        "a",
+        "\u{2191}",
+        "\u{20ac}",
+        "a\u{2191}",
+        "a\u{2191}\u{20ac}",
+      ]
+      .iter()
+      .flat_map(|set| [set.find_in(haystack), set.find_not_in(haystack)])
+      .flatten()
+      {
+        assert!(
+          haystack.is_char_boundary(offset),
+          "offset {} is not a char boundary of {:?}",
+          offset,
+          haystack
+        );
+      }
+    }
   }
 }

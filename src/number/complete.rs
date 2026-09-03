@@ -1195,7 +1195,7 @@ where
 {
   let e: ErrorKind = ErrorKind::IsA;
   let (i, o) = input.split_at_position1_complete(
-    |c| {
+    |c: I::Item| {
       let c = c.as_char();
       !"0123456789abcdefABCDEF".contains(c)
     },

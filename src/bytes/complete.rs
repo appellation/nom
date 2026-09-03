@@ -4,11 +4,12 @@ use core::marker::PhantomData;
 
 use crate::error::ParseError;
 use crate::internal::{IResult, Parser};
-use crate::traits::{Compare, FindSubstring, FindToken, ToUsize};
+use crate::traits::{Compare, FindSubstring, ToUsize};
 use crate::Complete;
 use crate::Emit;
 use crate::Input;
 use crate::OutputM;
+use crate::Pattern;
 
 /// Recognizes a pattern
 ///
@@ -101,12 +102,12 @@ where
 /// assert_eq!(not_space("Nospace"), Ok(("", "Nospace")));
 /// assert_eq!(not_space(""), Err(Err::Error(Error::new("", ErrorKind::IsNot))));
 /// ```
-pub fn is_not<T, I, Error: ParseError<I>>(arr: T) -> impl FnMut(I) -> IResult<I, I, Error>
+pub fn is_not<P, I, Error: ParseError<I>>(pattern: P) -> impl FnMut(I) -> IResult<I, I, Error>
 where
   I: Input,
-  T: FindToken<<I as Input>::Item>,
+  P: Pattern<I>,
 {
-  let mut parser = super::is_not(arr);
+  let mut parser = super::is_not(pattern);
 
   move |i: I| parser.process::<OutputM<Emit, Emit, Complete>>(i)
 }
@@ -132,12 +133,12 @@ where
 /// assert_eq!(hex("D15EA5E"), Ok(("", "D15EA5E")));
 /// assert_eq!(hex(""), Err(Err::Error(Error::new("", ErrorKind::IsA))));
 /// ```
-pub fn is_a<T, I, Error: ParseError<I>>(arr: T) -> impl FnMut(I) -> IResult<I, I, Error>
+pub fn is_a<P, I, Error: ParseError<I>>(pattern: P) -> impl FnMut(I) -> IResult<I, I, Error>
 where
   I: Input,
-  T: FindToken<<I as Input>::Item>,
+  P: Pattern<I>,
 {
-  let mut parser = super::is_a(arr);
+  let mut parser = super::is_a(pattern);
 
   move |i: I| parser.process::<OutputM<Emit, Emit, Complete>>(i)
 }
@@ -191,12 +192,12 @@ where
 /// assert_eq!(alpha(b"latin"), Ok((&b""[..], &b"latin"[..])));
 /// assert_eq!(alpha(b"12345"), Err(Err::Error(Error::new(&b"12345"[..], ErrorKind::TakeWhile1))));
 /// ```
-pub fn take_while1<F, I, Error: ParseError<I>>(cond: F) -> impl FnMut(I) -> IResult<I, I, Error>
+pub fn take_while1<P, I, Error: ParseError<I>>(pattern: P) -> impl FnMut(I) -> IResult<I, I, Error>
 where
   I: Input,
-  F: Fn(<I as Input>::Item) -> bool,
+  P: Pattern<I>,
 {
-  let mut parser = super::take_while1(cond);
+  let mut parser = super::take_while1(pattern);
 
   move |i: I| parser.process::<OutputM<Emit, Emit, Complete>>(i)
 }
@@ -289,12 +290,12 @@ where
 /// assert_eq!(till_colon(""), Err(Err::Error(Error::new("", ErrorKind::TakeTill1))));
 /// ```
 #[allow(clippy::redundant_closure)]
-pub fn take_till1<F, I, Error: ParseError<I>>(cond: F) -> impl FnMut(I) -> IResult<I, I, Error>
+pub fn take_till1<P, I, Error: ParseError<I>>(pattern: P) -> impl FnMut(I) -> IResult<I, I, Error>
 where
   I: Input,
-  F: Fn(<I as Input>::Item) -> bool,
+  P: Pattern<I>,
 {
-  let mut parser = super::take_till1(cond);
+  let mut parser = super::take_till1(pattern);
 
   move |i: I| parser.process::<OutputM<Emit, Emit, Complete>>(i)
 }
