@@ -1713,11 +1713,11 @@ impl<const N: usize> Pattern<&str> for [char; N] {
 
 impl Pattern<&str> for &[u8] {
   fn find_in(&self, haystack: &str) -> Option<usize> {
-    str::find(haystack, |c: char| self.contains(&(c as u8)))
+    find_byte_in(self, haystack.as_bytes())
   }
 
   fn find_not_in(&self, haystack: &str) -> Option<usize> {
-    str::find(haystack, |c: char| !self.contains(&(c as u8)))
+    find_byte_not_in(self, haystack.as_bytes())
   }
 }
 
