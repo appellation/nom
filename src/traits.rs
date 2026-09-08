@@ -1675,8 +1675,6 @@ fn find_byte_not_in(set: &[u8], haystack: &[u8]) -> Option<usize> {
 
 impl Pattern<&str> for &str {
   fn find_in(&self, haystack: &str) -> Option<usize> {
-    // An all-ASCII set can be searched for bytewise: every byte it can match is
-    // an ASCII byte, which is always a whole character and a char boundary.
     if self.is_ascii() {
       find_byte_in(self.as_bytes(), haystack.as_bytes())
     } else {
@@ -1685,8 +1683,6 @@ impl Pattern<&str> for &str {
   }
 
   fn find_not_in(&self, haystack: &str) -> Option<usize> {
-    // Likewise: every byte before the returned offset belongs to the set and is
-    // therefore ASCII, so the offset cannot land on a UTF-8 continuation byte.
     if self.is_ascii() {
       find_byte_not_in(self.as_bytes(), haystack.as_bytes())
     } else {
