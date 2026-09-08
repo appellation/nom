@@ -8,7 +8,7 @@ use crate::error::{ErrorKind, ParseError};
 use crate::lib::std::ops::{Add, Shl};
 use crate::sequence::pair;
 use crate::traits::{AsBytes, AsChar, Compare, Offset};
-use crate::{internal::*, Input};
+use crate::{internal::*, Complement, Input};
 
 /// Recognizes an unsigned 1 byte integer.
 ///
@@ -1159,16 +1159,9 @@ where
 pub fn hex_u32<I, E: ParseError<I>>(input: I) -> IResult<I, u32, E>
 where
   I: Input + AsBytes,
-  <I as Input>::Item: AsChar,
 {
   let e: ErrorKind = ErrorKind::IsA;
-  let (i, o) = input.split_at_position1(
-    |c: I::Item| {
-      let c = c.as_char();
-      !"0123456789abcdefABCDEF".contains(c)
-    },
-    e,
-  )?;
+  let (i, o) = input.split_at_position1(Complement(b"0123456789abcdefABCDEF"), e)?;
 
   // Do not parse more than 8 characters for a u32
   let (remaining, parsed) = if o.input_len() <= 8 {

@@ -9,6 +9,8 @@ use crate::error::ParseError;
 use crate::internal::{Err, IResult};
 use crate::traits::{AsChar, FindToken, Input};
 use crate::traits::{Compare, CompareResult};
+use crate::AsBytes;
+use crate::Complement;
 use crate::Complete;
 use crate::Emit;
 use crate::OutputM;
@@ -160,14 +162,11 @@ where
 /// ```
 pub fn not_line_ending<T, E: ParseError<T>>(input: T) -> IResult<T, T, E>
 where
-  T: Input,
+  T: Input + AsBytes,
   T: Compare<&'static str>,
   <T as Input>::Item: AsChar,
 {
-  match input.position(|item: T::Item| {
-    let c = item.as_char();
-    c == '\r' || c == '\n'
-  }) {
+  match input.position(b"\r\n") {
     None => Ok(input.take_split(input.input_len())),
     Some(index) => {
       let mut it = input.take_from(index).iter_elements();
@@ -632,13 +631,9 @@ where
 /// ```
 pub fn space0<T, E: ParseError<T>>(input: T) -> IResult<T, T, E>
 where
-  T: Input,
-  <T as Input>::Item: AsChar + Clone,
+  T: Input + AsBytes,
 {
-  input.split_at_position_complete(|item: T::Item| {
-    let c = item.as_char();
-    !(c == ' ' || c == '\t')
-  })
+  input.split_at_position_complete(Complement(b" \t"))
 }
 
 /// Recognizes one or more spaces and tabs.
@@ -691,13 +686,9 @@ where
 /// ```
 pub fn multispace0<T, E: ParseError<T>>(input: T) -> IResult<T, T, E>
 where
-  T: Input,
-  <T as Input>::Item: AsChar,
+  T: Input + AsBytes,
 {
-  input.split_at_position_complete(|item: T::Item| {
-    let c = item.as_char();
-    !(c == ' ' || c == '\t' || c == '\r' || c == '\n')
-  })
+  input.split_at_position_complete(Complement(b" \t\r\n"))
 }
 
 /// Recognizes one or more spaces, tabs, carriage returns and line feeds.
@@ -719,16 +710,9 @@ where
 /// ```
 pub fn multispace1<T, E: ParseError<T>>(input: T) -> IResult<T, T, E>
 where
-  T: Input,
-  <T as Input>::Item: AsChar,
+  T: Input + AsBytes,
 {
-  input.split_at_position1_complete(
-    |item: T::Item| {
-      let c = item.as_char();
-      !(c == ' ' || c == '\t' || c == '\r' || c == '\n')
-    },
-    ErrorKind::MultiSpace,
-  )
+  input.split_at_position1_complete(Complement(b" \t\r\n"), ErrorKind::MultiSpace)
 }
 
 pub(crate) fn sign<T, E: ParseError<T>>(input: T) -> IResult<T, bool, E>

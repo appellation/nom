@@ -9,6 +9,8 @@ use crate::error::ParseError;
 use crate::internal::{Err, IResult, Needed};
 use crate::traits::{AsChar, FindToken, Input};
 use crate::traits::{Compare, CompareResult};
+use crate::AsBytes;
+use crate::Complement;
 use crate::Emit;
 use crate::OutputM;
 use crate::Parser;
@@ -542,13 +544,9 @@ where
 /// ```
 pub fn space0<T, E: ParseError<T>>(input: T) -> IResult<T, T, E>
 where
-  T: Input,
-  <T as Input>::Item: AsChar,
+  T: Input + AsBytes,
 {
-  input.split_at_position(|item: T::Item| {
-    let c = item.as_char();
-    !(c == ' ' || c == '\t')
-  })
+  input.split_at_position(Complement(b" \t"))
 }
 /// Recognizes one or more spaces and tabs.
 ///
@@ -565,16 +563,9 @@ where
 /// ```
 pub fn space1<T, E: ParseError<T>>(input: T) -> IResult<T, T, E>
 where
-  T: Input,
-  <T as Input>::Item: AsChar,
+  T: Input + AsBytes,
 {
-  input.split_at_position1(
-    |item: T::Item| {
-      let c = item.as_char();
-      !(c == ' ' || c == '\t')
-    },
-    ErrorKind::Space,
-  )
+  input.split_at_position1(Complement(b" \t"), ErrorKind::Space)
 }
 
 /// Recognizes zero or more spaces, tabs, carriage returns and line feeds.
@@ -592,13 +583,9 @@ where
 /// ```
 pub fn multispace0<T, E: ParseError<T>>(input: T) -> IResult<T, T, E>
 where
-  T: Input,
-  <T as Input>::Item: AsChar,
+  T: Input + AsBytes,
 {
-  input.split_at_position(|item: T::Item| {
-    let c = item.as_char();
-    !(c == ' ' || c == '\t' || c == '\r' || c == '\n')
-  })
+  input.split_at_position(Complement(b" \t\r\n"))
 }
 
 /// Recognizes one or more spaces, tabs, carriage returns and line feeds.
@@ -616,16 +603,9 @@ where
 /// ```
 pub fn multispace1<T, E: ParseError<T>>(input: T) -> IResult<T, T, E>
 where
-  T: Input,
-  <T as Input>::Item: AsChar,
+  T: Input + AsBytes,
 {
-  input.split_at_position1(
-    |item: T::Item| {
-      let c = item.as_char();
-      !(c == ' ' || c == '\t' || c == '\r' || c == '\n')
-    },
-    ErrorKind::MultiSpace,
-  )
+  input.split_at_position1(Complement(b" \t\r\n"), ErrorKind::MultiSpace)
 }
 
 pub(crate) fn sign<T, E: ParseError<T>>(input: T) -> IResult<T, bool, E>

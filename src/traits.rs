@@ -1691,6 +1691,16 @@ impl Pattern<&str> for &str {
   }
 }
 
+impl Pattern<&[u8]> for &str {
+  fn find_in(&self, haystack: &[u8]) -> Option<usize> {
+    find_byte_in(self.as_bytes(), haystack)
+  }
+
+  fn find_not_in(&self, haystack: &[u8]) -> Option<usize> {
+    find_byte_not_in(self.as_bytes(), haystack)
+  }
+}
+
 impl Pattern<&str> for &[char] {
   fn find_in(&self, haystack: &str) -> Option<usize> {
     str::find(haystack, |c: char| self.contains(&c))
@@ -1711,43 +1721,33 @@ impl<const N: usize> Pattern<&str> for [char; N] {
   }
 }
 
-impl Pattern<&str> for &[u8] {
-  fn find_in(&self, haystack: &str) -> Option<usize> {
+impl<I: AsBytes> Pattern<I> for &[u8] {
+  fn find_in(&self, haystack: I) -> Option<usize> {
     find_byte_in(self, haystack.as_bytes())
   }
 
-  fn find_not_in(&self, haystack: &str) -> Option<usize> {
+  fn find_not_in(&self, haystack: I) -> Option<usize> {
     find_byte_not_in(self, haystack.as_bytes())
   }
 }
 
-impl Pattern<&[u8]> for &str {
-  fn find_in(&self, haystack: &[u8]) -> Option<usize> {
-    find_byte_in(self.as_bytes(), haystack)
+impl<const N: usize, I: AsBytes> Pattern<I> for &[u8; N] {
+  fn find_in(&self, haystack: I) -> Option<usize> {
+    find_byte_in(&self[..], haystack.as_bytes())
   }
 
-  fn find_not_in(&self, haystack: &[u8]) -> Option<usize> {
-    find_byte_not_in(self.as_bytes(), haystack)
-  }
-}
-
-impl Pattern<&[u8]> for &[u8] {
-  fn find_in(&self, haystack: &[u8]) -> Option<usize> {
-    find_byte_in(self, haystack)
-  }
-
-  fn find_not_in(&self, haystack: &[u8]) -> Option<usize> {
-    find_byte_not_in(self, haystack)
+  fn find_not_in(&self, haystack: I) -> Option<usize> {
+    find_byte_not_in(&self[..], haystack.as_bytes())
   }
 }
 
-impl<const N: usize> Pattern<&[u8]> for [u8; N] {
-  fn find_in(&self, haystack: &[u8]) -> Option<usize> {
-    find_byte_in(self, haystack)
+impl<const N: usize, I: AsBytes> Pattern<I> for [u8; N] {
+  fn find_in(&self, haystack: I) -> Option<usize> {
+    find_byte_in(&self[..], haystack.as_bytes())
   }
 
-  fn find_not_in(&self, haystack: &[u8]) -> Option<usize> {
-    find_byte_not_in(self, haystack)
+  fn find_not_in(&self, haystack: I) -> Option<usize> {
+    find_byte_not_in(&self[..], haystack.as_bytes())
   }
 }
 
