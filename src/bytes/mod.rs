@@ -163,15 +163,15 @@ where
 }
 
 /// Parser wrapper for `split_at_position`
-pub struct SplitPosition<F, E> {
-  predicate: F,
+pub struct SplitPosition<P, E> {
+  pattern: P,
   error: PhantomData<E>,
 }
 
-impl<I, Error: ParseError<I>, F> Parser<I> for SplitPosition<F, Error>
+impl<I, Error: ParseError<I>, P> Parser<I> for SplitPosition<P, Error>
 where
   I: Input,
-  F: Fn(<I as Input>::Item) -> bool,
+  P: Pattern<I>,
 {
   type Output = I;
 
@@ -179,7 +179,7 @@ where
 
   #[inline(always)]
   fn process<OM: OutputMode>(&mut self, i: I) -> crate::PResult<OM, I, Self::Output, Self::Error> {
-    i.split_at_position_mode::<OM, _, _>(|c| (self.predicate)(c))
+    i.split_at_position_mode::<OM, _, _>(self.pattern)
   }
 }
 
@@ -290,13 +290,15 @@ where
 /// assert_eq!(alpha(b"latin"), Ok((&b""[..], &b"latin"[..])));
 /// assert_eq!(alpha(b""), Ok((&b""[..], &b""[..])));
 /// ```
-pub fn take_while<F, I, Error: ParseError<I>>(cond: F) -> impl Parser<I, Output = I, Error = Error>
+pub fn take_while<P, I, Error: ParseError<I>>(
+  pattern: P,
+) -> impl Parser<I, Output = I, Error = Error>
 where
   I: Input,
-  F: Fn(<I as Input>::Item) -> bool,
+  P: Pattern<I>,
 {
   SplitPosition {
-    predicate: move |c| !cond(c),
+    pattern: Complement(pattern),
     error: PhantomData,
   }
 }
@@ -465,13 +467,15 @@ where
 /// assert_eq!(till_colon(""), Ok(("", "")));
 /// ```
 #[allow(clippy::redundant_closure)]
-pub fn take_till<F, I, Error: ParseError<I>>(cond: F) -> impl Parser<I, Output = I, Error = Error>
+pub fn take_till<P, I, Error: ParseError<I>>(
+  pattern: P,
+) -> impl Parser<I, Output = I, Error = Error>
 where
   I: Input,
-  F: Fn(<I as Input>::Item) -> bool,
+  P: Pattern<I>,
 {
   SplitPosition {
-    predicate: cond,
+    pattern,
     error: PhantomData,
   }
 }

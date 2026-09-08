@@ -164,12 +164,12 @@ where
 /// assert_eq!(alpha(b"latin"), Err(Err::Incomplete(Needed::new(1))));
 /// assert_eq!(alpha(b""), Err(Err::Incomplete(Needed::new(1))));
 /// ```
-pub fn take_while<F, I, Error: ParseError<I>>(cond: F) -> impl FnMut(I) -> IResult<I, I, Error>
+pub fn take_while<P, I, Error: ParseError<I>>(pattern: P) -> impl FnMut(I) -> IResult<I, I, Error>
 where
   I: Input,
-  F: Fn(<I as Input>::Item) -> bool,
+  P: Pattern<I>,
 {
-  let mut parser = super::take_while(cond);
+  let mut parser = super::take_while(pattern);
 
   move |i: I| parser.process::<OutputM<Emit, Emit, Streaming>>(i)
 }
@@ -271,12 +271,12 @@ where
 /// assert_eq!(till_colon(""), Err(Err::Incomplete(Needed::new(1))));
 /// ```
 #[allow(clippy::redundant_closure)]
-pub fn take_till<F, I, Error: ParseError<I>>(cond: F) -> impl FnMut(I) -> IResult<I, I, Error>
+pub fn take_till<P, I, Error: ParseError<I>>(pattern: P) -> impl FnMut(I) -> IResult<I, I, Error>
 where
   I: Input,
-  F: Fn(<I as Input>::Item) -> bool,
+  P: Pattern<I>,
 {
-  let mut parser = super::take_till(cond);
+  let mut parser = super::take_till(pattern);
 
   move |i: I| parser.process::<OutputM<Emit, Emit, Streaming>>(i)
 }
