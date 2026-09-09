@@ -1665,6 +1665,16 @@ fn find_byte_in(set: &[u8], haystack: &[u8]) -> Option<usize> {
   }
 }
 
+fn find_byte_in_array<const N: usize>(set: [u8; N], haystack: &[u8]) -> Option<usize> {
+  match N {
+    0 => None,
+    1 => memchr::memchr(set[0], haystack),
+    2 => memchr::memchr2(set[0], set[1], haystack),
+    3 => memchr::memchr3(set[0], set[1], set[2], haystack),
+    _ => haystack.iter().position(|b| set.contains(b)),
+  }
+}
+
 /// Byte offset of the first byte of `haystack` absent from `set`
 fn find_byte_not_in(set: &[u8], haystack: &[u8]) -> Option<usize> {
   match *set {
@@ -1733,7 +1743,7 @@ impl<I: AsBytes> Pattern<I> for &[u8] {
 
 impl<const N: usize, I: AsBytes> Pattern<I> for &[u8; N] {
   fn find_in(&self, haystack: I) -> Option<usize> {
-    find_byte_in(&self[..], haystack.as_bytes())
+    find_byte_in_array(**self, haystack.as_bytes())
   }
 
   fn find_not_in(&self, haystack: I) -> Option<usize> {
@@ -1743,7 +1753,7 @@ impl<const N: usize, I: AsBytes> Pattern<I> for &[u8; N] {
 
 impl<const N: usize, I: AsBytes> Pattern<I> for [u8; N] {
   fn find_in(&self, haystack: I) -> Option<usize> {
-    find_byte_in(&self[..], haystack.as_bytes())
+    find_byte_in_array(*self, haystack.as_bytes())
   }
 
   fn find_not_in(&self, haystack: I) -> Option<usize> {
