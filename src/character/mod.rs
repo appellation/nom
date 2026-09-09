@@ -5,6 +5,8 @@
 use core::marker::PhantomData;
 
 use crate::error::ErrorKind;
+use crate::AsBytes;
+use crate::Complement;
 use crate::FindToken;
 use crate::IsStreaming;
 use crate::Mode;
@@ -348,7 +350,8 @@ where
     &mut self,
     input: I,
   ) -> crate::PResult<OM, I, Self::Output, Self::Error> {
-    input.split_at_position_mode1::<OM, _, _>(|item| !item.is_dec_digit(), ErrorKind::Digit)
+    input
+      .split_at_position_mode1::<OM, _, _>(|item: I::Item| !item.is_dec_digit(), ErrorKind::Digit)
   }
 }
 
@@ -367,8 +370,7 @@ where
 /// ```
 pub fn multispace0<T, E: ParseError<T>>() -> impl Parser<T, Output = T, Error = E>
 where
-  T: Input,
-  <T as Input>::Item: AsChar,
+  T: Input + AsBytes,
 {
   MultiSpace0 { e: PhantomData }
   /*input.split_at_position(|item| {
@@ -384,8 +386,7 @@ pub struct MultiSpace0<E> {
 
 impl<I, Error: ParseError<I>> Parser<I> for MultiSpace0<Error>
 where
-  I: Input,
-  <I as Input>::Item: AsChar,
+  I: Input + AsBytes,
 {
   type Output = I;
   type Error = Error;
@@ -394,9 +395,6 @@ where
     &mut self,
     i: I,
   ) -> crate::PResult<OM, I, Self::Output, Self::Error> {
-    i.split_at_position_mode::<OM, _, _>(|item| {
-      let c = item.as_char();
-      !(c == ' ' || c == '\t' || c == '\r' || c == '\n')
-    })
+    i.split_at_position_mode::<OM, _, _>(Complement(b" \t\r\n"))
   }
 }

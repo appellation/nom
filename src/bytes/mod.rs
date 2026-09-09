@@ -14,14 +14,15 @@ use crate::lib::std::result::Result::*;
 use crate::traits::{Compare, CompareResult};
 use crate::AsChar;
 use crate::Check;
+use crate::Complement;
 use crate::ExtendInto;
 use crate::FindSubstring;
-use crate::FindToken;
 use crate::Input;
 use crate::IsStreaming;
 use crate::Mode;
 use crate::OutputM;
 use crate::OutputMode;
+use crate::Pattern;
 use crate::ToUsize;
 
 /// Recognizes a pattern.
@@ -162,15 +163,15 @@ where
 }
 
 /// Parser wrapper for `split_at_position`
-pub struct SplitPosition<F, E> {
-  predicate: F,
+pub struct SplitPosition<P, E> {
+  pattern: P,
   error: PhantomData<E>,
 }
 
-impl<I, Error: ParseError<I>, F> Parser<I> for SplitPosition<F, Error>
+impl<I, Error: ParseError<I>, P> Parser<I> for SplitPosition<P, Error>
 where
   I: Input,
-  F: Fn(<I as Input>::Item) -> bool,
+  P: Pattern<I>,
 {
   type Output = I;
 
@@ -178,21 +179,21 @@ where
 
   #[inline(always)]
   fn process<OM: OutputMode>(&mut self, i: I) -> crate::PResult<OM, I, Self::Output, Self::Error> {
-    i.split_at_position_mode::<OM, _, _>(|c| (self.predicate)(c))
+    i.split_at_position_mode::<OM, _, _>(self.pattern)
   }
 }
 
 /// Parser wrapper for `split_at_position1`
-pub struct SplitPosition1<F, E> {
+pub struct SplitPosition1<P, E> {
   e: ErrorKind,
-  predicate: F,
+  pattern: P,
   error: PhantomData<E>,
 }
 
-impl<I, Error: ParseError<I>, F> Parser<I> for SplitPosition1<F, Error>
+impl<I, Error: ParseError<I>, P> Parser<I> for SplitPosition1<P, Error>
 where
   I: Input,
-  F: Fn(<I as Input>::Item) -> bool,
+  P: Pattern<I>,
 {
   type Output = I;
 
@@ -200,7 +201,7 @@ where
 
   #[inline(always)]
   fn process<OM: OutputMode>(&mut self, i: I) -> crate::PResult<OM, I, Self::Output, Self::Error> {
-    i.split_at_position_mode1::<OM, _, _>(|c| (self.predicate)(c), self.e)
+    i.split_at_position_mode1::<OM, _, _>(self.pattern, self.e)
   }
 }
 
@@ -225,14 +226,14 @@ where
 /// assert_eq!(not_space("Nospace"), Ok(("", "Nospace")));
 /// assert_eq!(not_space(""), Err(Err::Error(Error::new("", ErrorKind::IsNot))));
 /// ```
-pub fn is_not<T, I, Error: ParseError<I>>(arr: T) -> impl Parser<I, Output = I, Error = Error>
+pub fn is_not<P, I, Error: ParseError<I>>(pattern: P) -> impl Parser<I, Output = I, Error = Error>
 where
   I: Input,
-  T: FindToken<<I as Input>::Item>,
+  P: Pattern<I>,
 {
   SplitPosition1 {
     e: ErrorKind::IsNot,
-    predicate: move |c| arr.find_token(c),
+    pattern,
     error: PhantomData,
   }
 }
@@ -258,14 +259,14 @@ where
 /// assert_eq!(hex("D15EA5E"), Ok(("", "D15EA5E")));
 /// assert_eq!(hex(""), Err(Err::Error(Error::new("", ErrorKind::IsA))));
 /// ```
-pub fn is_a<T, I, Error: ParseError<I>>(arr: T) -> impl Parser<I, Output = I, Error = Error>
+pub fn is_a<P, I, Error: ParseError<I>>(pattern: P) -> impl Parser<I, Output = I, Error = Error>
 where
   I: Input,
-  T: FindToken<<I as Input>::Item>,
+  P: Pattern<I>,
 {
   SplitPosition1 {
     e: ErrorKind::IsA,
-    predicate: move |c| !arr.find_token(c),
+    pattern: Complement(pattern),
     error: PhantomData,
   }
 }
@@ -289,13 +290,15 @@ where
 /// assert_eq!(alpha(b"latin"), Ok((&b""[..], &b"latin"[..])));
 /// assert_eq!(alpha(b""), Ok((&b""[..], &b""[..])));
 /// ```
-pub fn take_while<F, I, Error: ParseError<I>>(cond: F) -> impl Parser<I, Output = I, Error = Error>
+pub fn take_while<P, I, Error: ParseError<I>>(
+  pattern: P,
+) -> impl Parser<I, Output = I, Error = Error>
 where
   I: Input,
-  F: Fn(<I as Input>::Item) -> bool,
+  P: Pattern<I>,
 {
   SplitPosition {
-    predicate: move |c| !cond(c),
+    pattern: Complement(pattern),
     error: PhantomData,
   }
 }
@@ -324,14 +327,16 @@ where
 /// assert_eq!(alpha(b"latin"), Err(Err::Incomplete(Needed::new(1))));
 /// assert_eq!(alpha(b"12345"), Err(Err::Error(Error::new(&b"12345"[..], ErrorKind::TakeWhile1))));
 /// ```
-pub fn take_while1<F, I, Error: ParseError<I>>(cond: F) -> impl Parser<I, Output = I, Error = Error>
+pub fn take_while1<P, I, Error: ParseError<I>>(
+  pattern: P,
+) -> impl Parser<I, Output = I, Error = Error>
 where
   I: Input,
-  F: Fn(<I as Input>::Item) -> bool,
+  P: Pattern<I>,
 {
   SplitPosition1 {
     e: ErrorKind::TakeWhile1,
-    predicate: move |c| !cond(c),
+    pattern: Complement(pattern),
     error: PhantomData,
   }
 }
@@ -462,13 +467,15 @@ where
 /// assert_eq!(till_colon(""), Ok(("", "")));
 /// ```
 #[allow(clippy::redundant_closure)]
-pub fn take_till<F, I, Error: ParseError<I>>(cond: F) -> impl Parser<I, Output = I, Error = Error>
+pub fn take_till<P, I, Error: ParseError<I>>(
+  pattern: P,
+) -> impl Parser<I, Output = I, Error = Error>
 where
   I: Input,
-  F: Fn(<I as Input>::Item) -> bool,
+  P: Pattern<I>,
 {
   SplitPosition {
-    predicate: cond,
+    pattern,
     error: PhantomData,
   }
 }
@@ -496,14 +503,16 @@ where
 /// assert_eq!(till_colon(""), Err(Err::Incomplete(Needed::new(1))));
 /// ```
 #[allow(clippy::redundant_closure)]
-pub fn take_till1<F, I, Error: ParseError<I>>(cond: F) -> impl Parser<I, Output = I, Error = Error>
+pub fn take_till1<P, I, Error: ParseError<I>>(
+  pattern: P,
+) -> impl Parser<I, Output = I, Error = Error>
 where
   I: Input,
-  F: Fn(<I as Input>::Item) -> bool,
+  P: Pattern<I>,
 {
   SplitPosition1 {
     e: ErrorKind::TakeTill1,
-    predicate: cond,
+    pattern,
     error: PhantomData,
   }
 }

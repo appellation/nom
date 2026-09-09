@@ -9,6 +9,8 @@ use crate::error::ParseError;
 use crate::internal::{Err, IResult};
 use crate::traits::{AsChar, FindToken, Input};
 use crate::traits::{Compare, CompareResult};
+use crate::AsBytes;
+use crate::Complement;
 use crate::Complete;
 use crate::Emit;
 use crate::OutputM;
@@ -160,14 +162,11 @@ where
 /// ```
 pub fn not_line_ending<T, E: ParseError<T>>(input: T) -> IResult<T, T, E>
 where
-  T: Input,
+  T: Input + AsBytes,
   T: Compare<&'static str>,
   <T as Input>::Item: AsChar,
 {
-  match input.position(|item| {
-    let c = item.as_char();
-    c == '\r' || c == '\n'
-  }) {
+  match input.position(b"\r\n") {
     None => Ok(input.take_split(input.input_len())),
     Some(index) => {
       let mut it = input.take_from(index).iter_elements();
@@ -318,7 +317,7 @@ where
   T: Input,
   <T as Input>::Item: AsChar,
 {
-  input.split_at_position_complete(|item| !item.is_alpha())
+  input.split_at_position_complete(|item: T::Item| !item.is_alpha())
 }
 
 /// Recognizes one or more lowercase and uppercase ASCII alphabetic characters: a-z, A-Z
@@ -343,7 +342,7 @@ where
   T: Input,
   <T as Input>::Item: AsChar,
 {
-  input.split_at_position1_complete(|item| !item.is_alpha(), ErrorKind::Alpha)
+  input.split_at_position1_complete(|item: T::Item| !item.is_alpha(), ErrorKind::Alpha)
 }
 
 /// Recognizes zero or more ASCII numerical characters: 0-9
@@ -369,7 +368,7 @@ where
   T: Input,
   <T as Input>::Item: AsChar,
 {
-  input.split_at_position_complete(|item| !item.is_dec_digit())
+  input.split_at_position_complete(|item: T::Item| !item.is_dec_digit())
 }
 
 /// Recognizes one or more ASCII numerical characters: 0-9
@@ -412,7 +411,7 @@ where
   T: Input,
   <T as Input>::Item: AsChar,
 {
-  input.split_at_position1_complete(|item| !item.is_dec_digit(), ErrorKind::Digit)
+  input.split_at_position1_complete(|item: T::Item| !item.is_dec_digit(), ErrorKind::Digit)
 }
 
 /// Recognizes zero or more ASCII hexadecimal numerical characters: 0-9, A-F, a-f
@@ -436,7 +435,7 @@ where
   T: Input,
   <T as Input>::Item: AsChar,
 {
-  input.split_at_position_complete(|item| !item.is_hex_digit())
+  input.split_at_position_complete(|item: T::Item| !item.is_hex_digit())
 }
 /// Recognizes one or more ASCII hexadecimal numerical characters: 0-9, A-F, a-f
 ///
@@ -460,7 +459,7 @@ where
   T: Input,
   <T as Input>::Item: AsChar,
 {
-  input.split_at_position1_complete(|item| !item.is_hex_digit(), ErrorKind::HexDigit)
+  input.split_at_position1_complete(|item: T::Item| !item.is_hex_digit(), ErrorKind::HexDigit)
 }
 
 /// Recognizes zero or more octal characters: 0-7
@@ -485,7 +484,7 @@ where
   T: Input,
   <T as Input>::Item: AsChar,
 {
-  input.split_at_position_complete(|item| !item.is_oct_digit())
+  input.split_at_position_complete(|item: T::Item| !item.is_oct_digit())
 }
 
 /// Recognizes one or more octal characters: 0-7
@@ -510,7 +509,7 @@ where
   T: Input,
   <T as Input>::Item: AsChar,
 {
-  input.split_at_position1_complete(|item| !item.is_oct_digit(), ErrorKind::OctDigit)
+  input.split_at_position1_complete(|item: T::Item| !item.is_oct_digit(), ErrorKind::OctDigit)
 }
 
 /// Recognizes zero or more binary characters: 0-1
@@ -535,7 +534,7 @@ where
   T: Input,
   <T as Input>::Item: AsChar,
 {
-  input.split_at_position_complete(|item| !item.is_bin_digit())
+  input.split_at_position_complete(|item: T::Item| !item.is_bin_digit())
 }
 
 /// Recognizes one or more binary characters: 0-1
@@ -560,7 +559,7 @@ where
   T: Input,
   <T as Input>::Item: AsChar,
 {
-  input.split_at_position1_complete(|item| !item.is_bin_digit(), ErrorKind::BinDigit)
+  input.split_at_position1_complete(|item: T::Item| !item.is_bin_digit(), ErrorKind::BinDigit)
 }
 
 /// Recognizes zero or more ASCII numerical and alphabetic characters: 0-9, a-z, A-Z
@@ -585,7 +584,7 @@ where
   T: Input,
   <T as Input>::Item: AsChar,
 {
-  input.split_at_position_complete(|item| !item.is_alphanum())
+  input.split_at_position_complete(|item: T::Item| !item.is_alphanum())
 }
 
 /// Recognizes one or more ASCII numerical and alphabetic characters: 0-9, a-z, A-Z
@@ -610,7 +609,7 @@ where
   T: Input,
   <T as Input>::Item: AsChar,
 {
-  input.split_at_position1_complete(|item| !item.is_alphanum(), ErrorKind::AlphaNumeric)
+  input.split_at_position1_complete(|item: T::Item| !item.is_alphanum(), ErrorKind::AlphaNumeric)
 }
 
 /// Recognizes zero or more spaces and tabs.
@@ -632,13 +631,9 @@ where
 /// ```
 pub fn space0<T, E: ParseError<T>>(input: T) -> IResult<T, T, E>
 where
-  T: Input,
-  <T as Input>::Item: AsChar + Clone,
+  T: Input + AsBytes,
 {
-  input.split_at_position_complete(|item| {
-    let c = item.as_char();
-    !(c == ' ' || c == '\t')
-  })
+  input.split_at_position_complete(Complement(b" \t"))
 }
 
 /// Recognizes one or more spaces and tabs.
@@ -664,7 +659,7 @@ where
   <T as Input>::Item: AsChar,
 {
   input.split_at_position1_complete(
-    |item| {
+    |item: T::Item| {
       let c = item.as_char();
       !(c == ' ' || c == '\t')
     },
@@ -691,13 +686,9 @@ where
 /// ```
 pub fn multispace0<T, E: ParseError<T>>(input: T) -> IResult<T, T, E>
 where
-  T: Input,
-  <T as Input>::Item: AsChar,
+  T: Input + AsBytes,
 {
-  input.split_at_position_complete(|item| {
-    let c = item.as_char();
-    !(c == ' ' || c == '\t' || c == '\r' || c == '\n')
-  })
+  input.split_at_position_complete(Complement(b" \t\r\n"))
 }
 
 /// Recognizes one or more spaces, tabs, carriage returns and line feeds.
@@ -719,16 +710,9 @@ where
 /// ```
 pub fn multispace1<T, E: ParseError<T>>(input: T) -> IResult<T, T, E>
 where
-  T: Input,
-  <T as Input>::Item: AsChar,
+  T: Input + AsBytes,
 {
-  input.split_at_position1_complete(
-    |item| {
-      let c = item.as_char();
-      !(c == ' ' || c == '\t' || c == '\r' || c == '\n')
-    },
-    ErrorKind::MultiSpace,
-  )
+  input.split_at_position1_complete(Complement(b" \t\r\n"), ErrorKind::MultiSpace)
 }
 
 pub(crate) fn sign<T, E: ParseError<T>>(input: T) -> IResult<T, bool, E>
